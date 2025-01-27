@@ -17,7 +17,7 @@ const registerUser = asyncHandler( async (req, res) => {
     
     
     const {fullName, email, username, password } = req.body;
-    console.log("email", email);
+    // console.log("email", req.body);
     
     if([fullName, email, username, password].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required")
@@ -25,7 +25,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // User model can talk to MongoDB directly as it is made using mongoose and server is connected. 
     // findOne returns the first document that has either username or email
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ username }, { email }]
     })
 
@@ -36,7 +36,12 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // now for image upload as we are using multer's middleware in route file it adds new fields in req, here it is adding files field
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
     if(!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is required")
@@ -52,7 +57,7 @@ const registerUser = asyncHandler( async (req, res) => {
     const user = await User.create({
         fullName,
         avatar: avatar.url,
-        coverImage: avatar?.url || "",
+        coverImage: coverImage?.url || "",
         email,
         password,
         username: username.toLowerCase()
