@@ -255,7 +255,7 @@ const changeCurrentPassword = asyncHandler( async(req, res) => {
 const getCurrentUser = asyncHandler( async(req, res) => {
     return res
     .status(200)
-    .json(200, req.user, "current user fetched successfully")
+    .json(new ApiResponse(200, req.user, "current user fetched successfully"))
 })
 
 const updateAccountDetails = asyncHandler( async(req, res) => {
@@ -303,6 +303,8 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
         },
         { new: true}                               // returns updated user
     ).select("-password")
+
+    // optional that delete old image using old avatar Url
 
     return res
     .status(200)
