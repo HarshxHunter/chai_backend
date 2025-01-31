@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -419,6 +420,60 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
 
 })
 
+const getWatchHistory = asyncHandler( async(req, res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)                              // _id that we get is not actual mongoDB id but mongoose automatically converts _id into ObjectId of mongoDB
+            }                                                                               // when we use User.find ,etc but it does not work in aggregation pipeline thats why conversion here 
+        },
+        {
+            $lookup: {                                                       // first watchHistory has array of _id of videos then we repopulate the watchHistory array to all videos documents of same _ids
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [                                                 // sub pipeline on video before result goes of user as owner will have only _id of its owner but not the full document of user so we populate it with complete document of owner user 
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",                                    // change owner _id to whole owner's user document 
+                            pipeline: [
+                                {
+                                    $project: {                             // project means only fields we want from user document of owner
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"                             // owner gets overwrite with first element of array of owner for ease for frontend 
+                            }
+                        }git 
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,                                           // first element as aggregation returns a array
+            "Watch History fetched successfully"
+        )
+    )
+})
+
 export { 
     registerUser, 
     loginUser, 
@@ -429,5 +484,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 };
