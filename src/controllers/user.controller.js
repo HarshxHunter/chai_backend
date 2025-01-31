@@ -343,6 +343,82 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
     )
 })
 
+const getUserChannelProfile = asyncHandler( async(req, res) => {
+    const {username} = req.params;
+
+    if(!username?.trim()) {
+        throw new ApiError(400, "username is missing")
+    }
+
+    // find user using username and apply aggregation on it 
+    // can be done all in aggregation 
+    // .aggregate takes array of objects where each object is a pipeline/stage returning the result down to next stage 
+    // look at mongodb lookup for reference 
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",                        // not Subscribe but subscriptions as in mongoDB stores like this
+                localField: "_id",
+                foreignField: "channel",                      // get all subscription models having channel(having _id ref of user) field same as user._id or _id and insert a new field 
+                as: "subscribers"                             // called subscribers to this user data which is an array of all subscription documents meeting the criteria of lookup 
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"                             // get all users having subscriber(having _id ref of user) field in subscription model same as user._id or _id   
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"                      // used $ for subscriber as it is a filed now
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},             // $subscribers is an array of objects, subscribers.subscriber extracts only the subscriber values. $in checks if req.user?._id exists in the extracted array [ "userA123", "userB345", "userC6767" ].
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {                                        // send only field listed here
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ])
+
+    if(!channel?.length) {
+        throw new ApiError(404, "channel does not exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User channel fetched successfully")
+    )
+
+})
+
 export { 
     registerUser, 
     loginUser, 
@@ -352,5 +428,6 @@ export {
     getCurrentUser, 
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 };
