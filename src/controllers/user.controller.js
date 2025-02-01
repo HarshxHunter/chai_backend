@@ -160,8 +160,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1                     // this removes the field from document (can be done by $set:{refreshToken: null})
             }
         },
         {
@@ -353,7 +353,7 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
 
     // find user using username and apply aggregation on it 
     // can be done all in aggregation 
-    // .aggregate takes array of objects where each object is a pipeline/stage returning the result down to next stage 
+    // .aggregate takes array of objects where each object is a pipeline/stage returning the result
     // look at mongodb lookup for reference 
     const channel = await User.aggregate([
         {
@@ -365,7 +365,7 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
             $lookup: {
                 from: "subscriptions",                        // not Subscribe but subscriptions as in mongoDB stores like this
                 localField: "_id",
-                foreignField: "channel",                      // get all subscription models having channel(having _id ref of user) field same as user._id or _id and insert a new field 
+                foreignField: "channel",                      // get all subscription models having channel(which has _id ref of user) field same as user._id or _id and insert a new field 
                 as: "subscribers"                             // called subscribers to this user data which is an array of all subscription documents meeting the criteria of lookup 
             }
         },
@@ -374,13 +374,13 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "subscriber",
-                as: "subscribedTo"                             // get all users having subscriber(having _id ref of user) field in subscription model same as user._id or _id   
+                as: "subscribedTo"                             // get all subscription models having subscriber(which has _id ref of user) field in subscription model same as user._id or _id   
             }
         },
         {
             $addFields: {
                 subscribersCount: {
-                    $size: "$subscribers"                      // used $ for subscriber as it is a filed now
+                    $size: "$subscribers"                      // used $ for subscriber as it is a field now
                 },
                 channelsSubscribedToCount: {
                     $size: "$subscribedTo"
@@ -424,13 +424,13 @@ const getWatchHistory = asyncHandler( async(req, res) => {
     const user = await User.aggregate([
         {
             $match: {
-                _id: new mongoose.Types.ObjectId(req.user._id)                              // _id that we get is not actual mongoDB id but mongoose automatically converts _id into ObjectId of mongoDB
+                _id: new mongoose.Types.ObjectId(req.user._id)                              // _id that we get is not actual mongoDB id, but mongoose automatically converts _id into ObjectId of mongoDB
             }                                                                               // when we use User.find ,etc but it does not work in aggregation pipeline thats why conversion here 
         },
         {
-            $lookup: {                                                       // first watchHistory has array of _id of videos then we repopulate the watchHistory array to all videos documents of same _ids
+            $lookup: {                                                       // first watchHistory has array of _id of videos then we repopulate the watchHistory array to all video documents of same _ids
                 from: "videos",
-                localField: "watchHistory",
+                localField: "watchHistory",                                  // Normally, $lookup is used for one-to-one relationships (single localField to single foreignField). However, when localField is an array, $lookup automatically treats it as multiple possible matches. MongoDB expands the array and looks for all _ids in foreignField: "_id".
                 foreignField: "_id",
                 as: "watchHistory",
                 pipeline: [                                                 // sub pipeline on video before result goes of user as owner will have only _id of its owner but not the full document of user so we populate it with complete document of owner user 
@@ -456,7 +456,7 @@ const getWatchHistory = asyncHandler( async(req, res) => {
                             owner: {
                                 $first: "$owner"                             // owner gets overwrite with first element of array of owner for ease for frontend 
                             }
-                        }git 
+                        }
                     }
                 ]
             }
