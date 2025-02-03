@@ -31,7 +31,6 @@ import dashboardRouter from "./routes/dashboard.routes.js"
 // and import it here we have to use a middleware .use() to pass on the control to userRouter
 //industry practice to add /api/v1 as prefix so it will look like http://localhost:8000/api/v1/users/register
 
-app.use("/api/v1/healthcheck", healthcheckRouter)
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/tweets", tweetRouter)
 app.use("/api/v1/subscriptions", subscriptionRouter)
@@ -40,5 +39,6 @@ app.use("/api/v1/comments", commentRouter)
 app.use("/api/v1/likes", likeRouter)
 app.use("/api/v1/playlist", playlistRouter)
 app.use("/api/v1/dashboard", dashboardRouter)
+app.use("/api/v1/healthcheck", healthcheckRouter)
 
 export { app } 
