@@ -69,7 +69,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
     if (!avatar) {
-        throw new ApiError(400, "Avatar file is required")
+        throw new ApiError(400, "Error while uploading to cloudinary")
     }
 
     const user = await User.create({
@@ -106,7 +106,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const { username, email, password } = req.body;
 
-    if (!(username || email)) {                   //  can be written as (!username && !email)
+    if (!username && !email) {                   //  can be written as (!username && !email)
         throw new ApiError(400, "username or email is required")
     }
 
